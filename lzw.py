@@ -1,9 +1,12 @@
+"""Implements lzw algotithm"""
 class LZW:
+    'implements lzw algorithm'
     def __init__(self):
         self.saver = {chr(i): i for i in range(256)}
         self.num = 256
 
     def compress(self, inform):
+        'compress information'
         res = []
         n = 1
         cur_el = inform[0]
@@ -22,6 +25,7 @@ class LZW:
         return res
     
     def decompress(self, res):
+        'decompress compressed info'
         new_saver = {value: key for key, value in self.saver.items()}
         string = ''
         for element in res:
