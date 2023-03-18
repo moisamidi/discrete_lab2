@@ -3,98 +3,124 @@ Implements Huffman algorithm
 """
 
 
+class Node:
+    '''
+    A node class for the Huffman tree
+    '''
+
+    def __init__(self, frequency, letter=None, left=None, right=None):
+        self.frequency = frequency
+        self.letter = letter
+        self.code = ''
+        self.left = left
+        self.right = right
+
+
 class Huffman:
     '''
     Implements the Huffman algorithm
     '''
 
-    def __init__(self, string):
-        self.string = string
-        self.dict_letters = {}
-        self.probabil_list = []
-        self.help_list = []
+    def __init__(self):
+        self.tree_root = None
+        self.codes = {}
 
-    def create_dict(self):
+    def probabilities(self, text: str) -> list:
         '''
-        Creates a dictionary for encoding
+        Returns a list of leaf nodes
         '''
-        for letter in self.string:
-            if letter in self.dict_letters:
-                self.dict_letters[letter][0] += 1
+        probs = {}
+        for symbol in text:
+            if symbol not in probs:
+                probs[symbol] = 1
             else:
-                self.dict_letters[letter] = [1, 0, [], False]
-        for letter, value in self.dict_letters.items():
-            value[1] = value[0] / len(
-                self.string
-            )
-            self.probabil_list.append((value[1], letter))
-            # check if it is a list
-            if not isinstance(value[2], list):
-                value[2] = []  # initialize as empty list
-            self.probabil_list.append((value[1], letter))
+                probs[symbol] += 1
+        return sorted([Node(letter=letter, frequency=amount/len(text))
+                       for letter, amount in probs.items()],
+                      key=lambda node: node.frequency, reverse=True)
 
-        while len(self.probabil_list) > 1:
-            self.probabil_list.sort()
-            new_elem = (
-                self.probabil_list[0][0] + self.probabil_list[1][0],
-                self.probabil_list[0][1] + self.probabil_list[1][1],
-            )
-            for elem in self.probabil_list[0][1]:
-                for letter, value in self.dict_letters.items():
-                    if elem == letter:
-                        value[2].append(1)
-            for elem in self.probabil_list[1][1]:
-                for letter, value in self.dict_letters.items():
-                    if elem == letter:
-                        value[2].append(0)
-            self.probabil_list = self.probabil_list[2:]
-            self.probabil_list.append(new_elem)
-        return self.dict_letters
+    def make_tree(self, probs) -> None:
+        '''
+        Makes a Huffman tree
+        '''
+        while len(probs) > 2:
+            probs.sort(key=lambda node: node.frequency, reverse=True)
+            first = probs[-1]
+            second = probs[-2]
+            probs = probs[:-2]
+            probs.append(
+                Node(frequency=first.frequency+second.frequency, left=first, right=second),)
+        probs.sort(key=lambda node: node.frequency, reverse=True)
+        first = probs[-1]
+        second = probs[-2]
+        self.tree_root = Node(frequency=first.frequency +
+                              second.frequency, left=first, right=second)
 
-    def encode(self):
+    def create_codes(self, node: Node, code: str = '') -> None:
         '''
-        Encodes a string
+        Creates a codes dict for the given tree
         '''
-        for value in self.dict_letters.values():
-            code = value[2]
-            code.reverse()
-            encode_val = ""
-            for i in code:
-                encode_val += str(i)
-            value[2] = encode_val
-        encoded_string = self.string
-        for letter, value in self.dict_letters.items():
-            encoded_string = encoded_string.replace(
-                letter, value[2])
-        return encoded_string
+        if node.left and node.right:
+            self.create_codes(node.left, code+'0')
+            self.create_codes(node.right, code+'1')
+        else:
+            self.codes[node.letter] = code
+            node.code = code
 
-    def decode(self, encoded_string):
+    def encode(self, text: str) -> str:
         '''
-        Decodes a compressed string
+        Encodes text
         '''
-        decoded_string = ""
-        saver = []
-        for letter in list(self.dict_letters.keys()):
-            saver.append(self.dict_letters[letter][2])
-        saver.sort(reverse=True)
-        while encoded_string:
-            for elem in saver:
-                if encoded_string.startswith(elem):
-                    decoded_string += dict(
-                        (value[2], key) for (key, value) in self.dict_letters.items()
-                    )[elem]
-                    encoded_string = encoded_string.removeprefix(elem)
-        return decoded_string
+        self.tree_root = None
+        self.codes = {}
+        probs = self.probabilities(text)
+        if len(probs) == 1:
+            self.tree_root = probs[0]
+            self.tree_root.code = '0'
+            self.codes[self.tree_root.letter] = '0'
+        else:
+            self.make_tree(probs)
+            self.create_codes(self.tree_root)
+        code_table = text.maketrans(self.codes)
+        return text.translate(code_table)
+
+    def decode(self, code: str) -> str:
+        '''
+        Decodes a string
+        '''
+        decoded_text = ''
+        node = self.tree_root
+        for bit in code:
+            if not (node.right and node.left):  # single letter string case
+                decoded_text += node.letter
+                node = self.tree_root
+                continue
+            if bit == '1':
+                node = node.right
+            else:
+                node = node.left
+            if not (node.right and node.left):
+                decoded_text += node.letter
+                node = self.tree_root
+        return decoded_text
+
+    def canonical_code(self):
+        '''
+        Returns the size of the dict as canonical codes
+        '''
+        size = 0
+        for code in self.codes.values():
+            size += len(bin(len(code))[2:])+len(str(code))
+        return size
 
 
 if __name__ == '__main__':
-    INPUT_FILE = 'test_short.txt'
-    with open(INPUT_FILE, 'r', encoding='utf-8') as f:
-        contents = f.read()
-    huff = Huffman(contents)
-    huff.create_dict()
-    encoded_contents = huff.encode()
-    # print(encoded_contents)
-    decoded_contents = huff.decode(encoded_contents)
-    # print(decoded_contents)
-    assert decoded_contents == contents
+    with open('test_short.txt', 'r', encoding='utf-8') as file:
+        data = file.read()
+    huffman = Huffman()
+    encoded = huffman.encode(data)
+    with open('compressed_huffman.txt', 'w', encoding='utf-8') as file:
+        file.write(encoded)
+    print('Original: ', len(data))
+    print('Compressed: ', len(encoded)/8+huffman.canonical_code())
+    assert huffman.decode(encoded) == data

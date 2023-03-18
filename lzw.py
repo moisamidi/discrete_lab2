@@ -12,45 +12,45 @@ class LZW:
         self.saver = {chr(i): i for i in range(256)}
         self.num = 256
 
-    def compress(self, inform):
+    def encode(self, text: str) -> str:
         '''
         Compresses the information
         '''
-        res = []
+        compressed_data = []
         number = 1
-        cur_el = inform[0]
+        cur_el = text[0]
 
-        while number < len(inform):
-            if cur_el + inform[number] in self.saver:
-                cur_el = cur_el + inform[number]
+        while number < len(text):
+            if cur_el + text[number] in self.saver:
+                cur_el = cur_el + text[number]
                 number += 1
             else:
-                res.append(self.saver[cur_el])
-                self.saver[cur_el + inform[number]] = self.num
+                compressed_data.append(self.saver[cur_el])
+                self.saver[cur_el + text[number]] = self.num
                 self.num += 1
-                cur_el = inform[number]
+                cur_el = text[number]
                 number += 1
-        res.append(self.saver[cur_el])
-        return res
+        compressed_data.append(self.saver[cur_el])
+        return ' '.join([str(code) for code in compressed_data])
 
-    def decompress(self, res):
+    def decode(self, code: str) -> str:
         '''
-        Decompresses the compressed info
+        Decompresses the compressed information
         '''
         new_saver = {value: key for key, value in self.saver.items()}
-        string = ''
-        for element in res:
-            string += new_saver[element]
-        return string
+        decoded_text = ''
+        for element in code.split(' '):
+            decoded_text += new_saver[int(element)]
+        return decoded_text
 
 
 if __name__ == '__main__':
-    INPUT_FILE = 'test_short.txt'
-    with open(INPUT_FILE, 'r', encoding='utf-8') as f:
-        contents = f.read()
+    with open('test_short.txt', 'r', encoding='utf-8') as file:
+        data = file.read()
     lzw = LZW()
-    encoded_contents = lzw.compress(contents)
-    # print(encoded_contents)
-    decoded_contents = lzw.decompress(encoded_contents)
-    # print(decoded_contents)
-    assert decoded_contents == contents
+    encoded = lzw.encode(data)
+    with open('compressed_LZW.txt', 'w', encoding='utf-8') as file:
+        file.write(str(encoded))
+    print('Original: ', len(data))
+    print('Compressed: ', len(encoded))
+    assert lzw.decode(encoded) == data

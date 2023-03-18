@@ -1,7 +1,6 @@
 '''
 Implements four compression algorithms
 '''
-import sys
 
 
 class LZ77:
@@ -73,7 +72,10 @@ class LZ77:
                     code.append((0, 1, line))
             else:
                 offset, length = line.split('/')
-                code.append((int(offset), int(length), ''))
+                if offset == '':
+                    code.append((0, 1, '/'))
+                else:
+                    code.append((int(offset), int(length), ''))
         return code
 
     def decode(self, code: list) -> str:
@@ -100,9 +102,9 @@ if __name__ == '__main__':
         data = file.read()
     encoded = lz77.encode(data)
     encoded_compressed = lz77.code_to_bytes(encoded)
-    with open('compressed.txt', 'w', encoding='utf-8') as file:
+    with open('compressed_lz77.txt', 'w', encoding='utf-8') as file:
         file.write(encoded_compressed)
-    print('Original: ', sys.getsizeof(data))
-    print('Compressed: ', sys.getsizeof(encoded_compressed))
+    print('Original: ', len(data))
+    print('Compressed: ', len(encoded_compressed))
     assert lz77.decode(encoded) == data
     assert lz77.decode(lz77.code_from_bytes(encoded_compressed)) == data
